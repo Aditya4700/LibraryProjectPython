@@ -29,6 +29,7 @@ class Member(SQLObject):
     address = StringCol(length=100, notNone=True)
     contact = StringCol(length=100, notNone=True)
     debt = IntCol(notNone=True)
+    paid_money= IntCol(default=0, notNone=True)
 Member.createTable(ifNotExists=True)
     
 class TransactionT(SQLObject):

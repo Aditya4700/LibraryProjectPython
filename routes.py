@@ -30,45 +30,58 @@ def add_book():
 
 @route.route('/book/<id>', methods=['GET'])
 def get_book(id):
-    book = Book.get(int(id), None)
-    if book:
-        return jsonify({'book': {'id': book.id, 'title': book.title, 'author': book.author, 'ISBN': book.isbn, 'publisher': book.publisher, 'page': book.page, 'stock': book.stock, 'rent_fee':book.rent_fee }}),200
-    else:
-        return jsonify({'error': f'Book with id {id} not found'})
+    try:
+        book = Book.get(int(id), None)
+        return jsonify({'book': {'id': book.id, 'title': book.title, 'author': book.author, 'ISBN': book.isbn, 'publisher': book.publisher, 'page': book.page, 'stock': book.stock, 'rent_fee':book.rent_fee }}), 200
 
+    except SQLObjectNotFound:
+        return jsonify({'error': f'Book with id {id} not found'}), 404
 
 @route.route('/booku/<id>', methods=['PUT'])
 def update_book(id):
-    book = Book.get(id)
-    if not book:
-        return jsonify({'error': 'Book not found'})
+    try:
+        book = Book.get(id)
+        request_data = request.json
+        for field in ['title', 'author', 'ISBN', 'publisher', 'page', 'stock', 'rent_fee']:
+            if field in request_data:
+                setattr(book, field, request_data[field])
 
-    request_data = request.json
-    for field in ['title', 'author', 'ISBN', 'publisher', 'page', 'stock', 'rent_fee']:
-        if field in request_data:
-            setattr(book, field, request_data[field])
+        # Save changes to the database
 
-     # Save changes to the database
-
-    return jsonify({'book': {'id': book.id, 'title': book.title, 'author': book.author, 'ISBN': book.isbn, 'publisher': book.publisher, 'page': book.page, 'stock': book.stock, 'rent_fee':book.rent_fee}}),200
+        return jsonify({'book': {'id': book.id, 'title': book.title, 'author': book.author, 'ISBN': book.isbn, 'publisher': book.publisher, 'page': book.page, 'stock': book.stock, 'rent_fee':book.rent_fee}}), 200
+    except SQLObjectNotFound:
+        return jsonify({'error': 'Book not found'}), 404
+    
 
 
 @route.route('/bookd/<id>', methods=['DELETE'])
 def delete_book(id):
     book = Book.get(id)
-    if book:
+    try:
         book.delete(id)
-        return jsonify({'result': 'Book deleted'}),200
-    else:
-        return jsonify({'error': 'Book not found'})
+        return jsonify({'result': 'Book deleted'}), 200
+    except SQLObjectNotFound:
+        return jsonify({'error': 'Book not found'}), 404
+        
 
 @route.route('/books', methods=['GET'])
 def get_books():
     books = Book.select()
     books_list = []
     for book in books:
-        books_list.routeend({'id': book.id, 'title': book.title, 'author': book.author, 'ISBN': book.isbn, 'publisher': book.publisher, 'page': book.page, 'stock': book.stock, 'rent_fee':book.rent_fee})
+        books_list.append({'id': book.id, 'title': book.title, 'author': book.author, 'ISBN': book.isbn, 'publisher': book.publisher, 'page': book.page, 'stock': book.stock, 'rent_fee':book.rent_fee})
     return jsonify({'books': books_list}),200
+
+@route.route('/booksearch', methods=['GET'])
+def search_book():
+    name = request.json['name']
+    author = request.json['author']
+
+    books = Book.selectBy(title=name, author=author)
+    books_list = []
+    for book in books:
+        books_list.append({'id': book.id, 'title': book.title, 'author': book.author, 'ISBN': book.isbn, 'publisher': book.publisher, 'page': book.page, 'stock': book.stock, 'rent_fee': book.rent_fee})
+    return jsonify({'books': books_list}), 200
 
 
 @route.route('/membs', methods=['POST'])
@@ -80,55 +93,61 @@ def add_member():
     
     # check if the member already exists
     if Member.selectBy(name=name).count() > 0:
-        return jsonify({'message': 'Member already exists'})
-    
+        return jsonify({'message': 'Member already exists'}), 409
+     
     # create and add the new member
     Member(name=name, address=address, contact=contact, debt=debt)
-    # transaction.commit()
-    # Member.sync()
     
-    return jsonify({'message': 'Member added successfully'}),200
+    
+    return jsonify({'message': 'Member added successfully'}), 200
 
 
 @route.route('/member/<id>', methods=['GET'])
 def get_member(id):
-    member = Member.get(int(id), None)
-    if member:
-        return jsonify({'member': {'id': member.id, 'name': member.name, 'address': member.address, 'contact': member.contact, 'debt': member.debt}}),200
-    else:
-        return jsonify({'error': f'Member with id {id} not found'})
-
+    try:
+        member = Member.get(int(id), None)
+        return jsonify({'member': {'id': member.id, 'name': member.name, 'address': member.address, 'contact': member.contact, 'debt': member.debt, 'paid_money':member.paid_money}}),200
+    except SQLObjectNotFound:
+        return jsonify({'error': f'Member with id {id} not found'}), 404
+        
+    
 @route.route('/memberu/<id>', methods=['PUT'])
 def update_member(id):
-    member = Member.get(id)
-    if not member:
-        return jsonify({'error': 'Member not found'})
+    try:
+        member = Member.get(int(id), None)
+        request_data = request.json
+        for field in ['name', 'address', 'contact', 'debt']:
+            if field in request_data:
+                setattr(member, field, request_data[field])
 
-    request_data = request.json
-    for field in ['name', 'address', 'contact', 'debt']:
-        if field in request_data:
-            setattr(member, field, request_data[field])
-
-     # Save changes to the database
-    return jsonify({'member': {'id': member.id, 'name': member.name, 'address': member.address, 'contact': member.contact, 'debt': member.debt}}),200
+        # Save changes to the database
+        return jsonify({'member': {'id': member.id, 'name': member.name, 'address': member.address, 'contact': member.contact, 'debt': member.debt}}), 200
+        
+    except SQLObjectNotFound:
+        return jsonify({'error': 'Member not found'}), 404
+        
+    
 
 
 @route.route('/memberd/<id>', methods=['DELETE'])
 def delete_member(id):
-    member = Member.get(id)
-    if member:
+    try:
+        member = Member.get(id)
+        debt = member.debt
+        if debt > 0 :
+            return jsonify({'error': 'Cannot delete member. The member has borrowed books that are not returned.'}), 400
         member.delete(id)
-        return jsonify({'result': 'Member deleted'}),200
-    else:
-        return jsonify({'error': 'Member not found'})
+        return jsonify({'result': 'Member deleted'}), 200
+    except SQLObjectNotFound:
+        return jsonify({'error': 'Member not found'}), 404
 
 @route.route('/members', methods=['GET'])
 def get_members():
     members = Member.select()
     members_list = []
     for member in members:
-        members_list.routeend({'id': member.id, 'name': member.name, 'address': member.address, 'contact': member.contact, 'debt': member.debt})
-    return jsonify({'members': members_list}),200
+        members_list.append({'id': member.id, 'name': member.name, 'address': member.address, 'contact': member.contact, 'debt': member.debt, 'paid_money':member.paid_money})
+    return jsonify({'members': members_list}), 200
 
 
 
@@ -137,18 +156,19 @@ def get_members():
 def issue_book():
     member_id = request.json['member_id']
     book_id = request.json['book_id']
-    # days = request.json['days']
-
-    member = Member.get(member_id)
+    try:
+        member = Member.get(member_id)
+        book = Book.get(book_id)
+    except SQLObjectNotFound:
+        return jsonify({"message": "Member or Book not found"}), 404
     
     if member.debt >= 500:
         return {"error": "Member's outstanding debt is more than Rs. 500, book issue not possible."}, 400
     
-    book = Book.get(book_id)
+     # Check if assigning the book will cause the member's debt to exceed Rs. 500
+    if (member.debt + book.rent_fee) > 500:
+        return {"error": "Member's outstanding debt will exceed Rs. 500, book issue not possible."}, 400
 
-    if member is None or book is None:
-        return jsonify({"message": "Member or Book not found"}), 404
-    
     if book.stock == 0:
         return jsonify({"message": "Book is not in stock"}), 400
     print(member)
@@ -162,11 +182,7 @@ def issue_book():
     # subtract 1 from the stock of the book
     book.stock -= 1
 
-    # calculate the due date
-    # due_date = datetime.now() + timedelta(days=days)
-
     # add a new transaction
-    # TransactionT(member=member_id, book=book_id, issue_date=str(datetime.now()), return_date=None,status="borrowed")
     TransactionT(member=member_id, book=book_id, issue_date=str(datetime.now()), return_date=None, status="borrowed") 
 
     # add the rent fee to the member's debt
@@ -182,12 +198,14 @@ def issue_book():
 @route.route('/return', methods=['POST'])
 def return_book():
     transaction_id = request.json['transaction_id']
-
-    trans = TransactionT.get(transaction_id)
-
+    
+    
+    trans = TransactionT.selectBy(id=transaction_id).getOne(None)
+   
     if trans is None:
         return jsonify({"message": "Transaction not found"}), 404
-    
+
+    # add the following line to explicitly return a 404 status code if trans is not None
     if trans.return_date is not None:
         return jsonify({"message": "Book has already been returned"}), 400
 
@@ -195,40 +213,40 @@ def return_book():
     trans.return_date = str(datetime.now())
 
     # add 1 to the stock of the book
-    book = trans.book
-    book.stock += 1
+    Book_id = trans.book
+    Book_info = Book.get(Book_id)
+    Book_info.stock += 1
 
     # subtract the rent fee from the member's debt
-    member = trans.member
-    member.debt -= book.rent_fee
-
+    Member_id = trans.member
+    Member_info = Member.get(Member_id) 
+    Member_info.debt -= Book_info.rent_fee
+    Member_info.paid_money += Book_info.rent_fee
+    trans.status="returned"
     return jsonify({"message": "Book returned successfully"}), 200
-
-
 
 
 
 @route.route('/high', methods=['GET'])
 def highest_paying_customers():
     
-    
-    top_members = Member.select().orderBy(DESC(Member.q.debt))[:5]
+    # Select the top members by paid_money in descending order
+    top_members = Member.select().orderBy(DESC(Member.q.paid_money))
 
-    # Sort the top_members by debt in descending order
-    
-    sorted_top_members = sorted(top_members, key=lambda member: member.debt, reverse=True)
+    # Sort the top_members by paid_money in descending order
+    sorted_top_members = sorted(top_members, key=lambda Member: Member.paid_money, reverse=True)
 
-    # Print the top 5 highest paying members
+    # Prepare the result as a list of dictionaries
     result = []
     for i, member in enumerate(sorted_top_members):
-        result.routeend({
+        result.append({
             "rank": i+1,
             "name": member.name,
-            "debt": member.debt
+            "paid_money": member.paid_money
             })
 
-    # Return the result as a JSON response
-    return jsonify(result),200
+    # Return the result as a JSON response with HTTP status code 200
+    return jsonify(result), 200 
 
    
 
@@ -257,3 +275,5 @@ def most_popular_books():
         })
 
     return jsonify({'popular_books': book_info}), 200
+
+
