@@ -52,17 +52,24 @@ def update_book(id):
     except SQLObjectNotFound:
         return jsonify({'error': 'Book not found'}), 404
     
-
-
 @route.route('/bookd/<id>', methods=['DELETE'])
 def delete_book(id):
-    book = Book.get(id)
     try:
-        book.delete(id)
+        book = Book.get(int(id))
+        
+        #check if the book to be deleted is returned by the member
+        transact = TransactionT.selectBy(book=book.id, status='borrowed')
+        
+        if transact.count() > 0:
+            return jsonify({'error': 'Book cannot be deleted. It has not been returned by the member.'}), 400
+            
+        
+        book.delete()
         return jsonify({'result': 'Book deleted'}), 200
     except SQLObjectNotFound:
         return jsonify({'error': 'Book not found'}), 404
-        
+
+
 
 @route.route('/books', methods=['GET'])
 def get_books():
